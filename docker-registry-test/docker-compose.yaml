@@ -1,0 +1,128 @@
+version: '3' # Specify Docker Compose version
+
+
+networks:
+  my-registry-net:
+    driver: bridge # Custom network to facilitate inter-service communication
+
+
+volumes:
+  # Bind host directory to store Docker registry data
+  my-registry-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data
+
+  # Bind host directory to store Portainer data
+  my-portainer-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./portainer
+
+
+services:
+
+
+  registry:
+    image: registry:2
+    restart: always # Always restart on failure or during container stop
+    ports:
+      - 5000:5000 # Expose Docker registry on port 5000
+
+    environment:
+      # Set the address and port for the registry
+      REGISTRY_HTTP_ADDR: 0.0.0.0:5000
+
+      # Set up TLS for secure communication
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/domain.crt # Path to TLS certificate
+      REGISTRY_HTTP_TLS_KEY: /certs/domain.key # Path to TLS key
+
+      # Secret used to sign tokens for HTTP basic authentication
+      REGISTRY_HTTP_SECRET: supersecuresecret
+
+      # Authentication configuration using htpasswd file
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry-Realm # Authentication realm
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/registry.password # Path to htpasswd file
+
+      # Storage configuration
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /data # Directory where images will be stored
+
+      # Enable image deletion from the registry
+      REGISTRY_STORAGE_DELETE_ENABLED: 'true'
+
+    volumes:
+      - my-registry-data:/data # Mount registry data volume
+      - ./certs:/certs # Mount local certificate directory
+      - ./auth:/auth # Mount local authentication directory
+
+    networks:
+      - my-registry-net # Attach registry service to the custom network
+
+
+  registry-ui:
+    image: joxit/docker-registry-ui:latest
+    restart: always # Always restart if the container stops
+
+    environment:
+      REGISTRY_TITLE: FlagFrenzy | Registry # Custom title for UI
+      REGISTRY_SECURED: true # Enable secured access to the registry
+      SINGLE_REGISTRY: true # Only a single registry is used
+      DELETE_IMAGES: true # Allow image deletion from the UI
+      SHOW_CONTENT_DIGEST: true # Show content digest in UI
+      SHOW_CATALOG_NB_TAGS: true # Display number of tags in catalog
+      TAGLIST_PAGE_SIZE: 100 # Set page size for the tag list
+      CATALOG_ELEMENTS_LIMIT: 10 # Limit number of elements in the catalo
+      THEME: dark # Set UI theme to dark - no one uses light mode
+
+      # Same authentication settings as the registry service
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry-Realm
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/registry.password
+
+    depends_on:
+      - registry # Ensure the registry service starts before the UI
+
+    volumes:
+      - ./certs:/etc/nginx/certs:ro # Mount certificates directory as read-only
+      - ./auth:/auth # Mount authentication directory
+
+    networks:
+      - my-registry-net # Attach registry-ui service to the custom network
+
+
+  nginx:
+    image: nginx:latest
+    restart: always # Always restart if the container stops
+    ports:
+      - 8443:443 # Expose Nginx on port 8443 (HTTPS)
+
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro # Mount Nginx configuration file as read-only
+      - ./certs:/etc/nginx/certs:ro # Mount certificates directory as read-only
+
+    depends_on:
+      - registry # Ensure the registry starts before Nginx
+      - registry-ui # Ensure the registry UI starts before Nginx
+
+    networks:
+      - my-registry-net # Attach Nginx service to the custom network
+
+
+  portainer:
+    image: portainer/portainer-ce
+    ports:
+      - 9443:9443 # Expose Portainer on port 9443 (HTTPS)
+
+    restart: on-failure # Restart only on failure
+
+    volumes:
+      - my-portainer-data:/data # Mount Portainer data volume
+      - $XDG_RUNTIME_DIR/docker.sock:/var/run/docker.sock # Rootless Docker socket mount for Portainer
+
+    networks:
+      - my-registry-net # Attach Portainer to the custom network
