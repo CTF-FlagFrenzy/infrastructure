@@ -289,11 +289,13 @@ docker compose up --build
 ### Use Private Local Docker Registry
 * Add registry host dns name to your client:
 > [!NOTE]
-> Change `ip` to the machine's ip address where the registry is running.
+> Change `ip` to the machine's ip address and `my_registry_host` with the hostname where the registry is running.
 ```bash
-sudo echo 'ip my_registry_host' >> /etc/hosts
+sudo -- sh -c "echo 'ip my_registry_host' >> /etc/hosts"
 ```
 * Copy the container-host's certificate to the client:
+> [!NOTE]
+> Change `user` with the host's username where the regisrty is running on
 ```bash
 sudo scp user@my_registry_host:~/docker-registry/certs/domain.crt /usr/share/ca-certificates
 ```
