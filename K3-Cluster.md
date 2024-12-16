@@ -106,6 +106,8 @@ services:
       - my-loadbalancer-net # Attach Portainer to the custom network
 ```
 * Create and open the `nginx.conf` file and define the load balancer rules including the forwarding:
+> [!NOTE]
+> Change the ip addresses under `k3s_servers` if needed - the port should be the same though.
 ```nginxconf
 events {}
 
@@ -122,7 +124,7 @@ stream {
 }
 ```
 * Create and open the `.env` file and define the variables for the database:
-```conf
+```sh
 MYSQL_DATABASE=k3s
 MYSQL_USER=k3s
 MYSQL_PASSWORD=MySuperSecurePassw0rd
@@ -212,7 +214,7 @@ sh -
 ```
 * Verify the installation, display all pods on one of the servers:
 ```bash
-sudo k3s kubectl get nodes
+k3s kubectl get nodes
 ```
 
 ---
