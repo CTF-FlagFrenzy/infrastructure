@@ -2,11 +2,6 @@
 
 ---
 
-### Requirements
-tdh.
-
----
-
 ### Set up the load balancer
 * Add the load balancer's dns name (lb):
 > [!NOTE]
@@ -288,3 +283,52 @@ kubectl proxy
 ```
 * On the dashboard (`http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/`) log in using the token gathered earlier.
 * Verify the functionality by viewing the nodes.
+
+---
+
+### Implement private registry
+* Add the registry's dns name to the server:
+> [!NOTE]
+> Change `ip` to the registry's ip address.
+```bash
+sudo -- sh -c "echo 'ip registry' >> /etc/hosts"
+```
+* Copy the needed files from the registry to the server:
+> [!NOTE]
+> Change `myuser` to the right user on the registry server.
+```bash
+sudo scp plonerf@registry:~/docker-registry/certs/domain* /etc/rancher/k3s/
+```
+* Create `/etc/rancher/k3s/.env` for the registry's login credentials:
+> [!NOTE]
+> Change the values if needed.
+```sh
+REGISTRY_USER=RegistryUser
+REGISRTY_PASSWORD=MySuperSecurePassw0rd
+```
+* Update K3s configuration in `/etc/rancher/k3s/registries.yaml` to integrate the private registry:
+```yml
+mirrors:
+  "registry:5000":
+
+    endpoint:
+      - "https://registry:5000"
+
+
+configs:
+  "registry:5000":
+
+    env_file: .env
+    environment:
+      REGISTRY_USER: ${REGISTRY_USER}
+      REGISRTY_PASSWORD: ${REGISRTY_PASSWORD}
+
+    auth:
+      username: ${REGISTRY_USER}
+      password: ${REGISRTY_PASSWORD}
+
+    tls:
+      cert_file: "domain.crt"
+      key_file: "domain.key"
+```
+* Repeat the process on all servers.
