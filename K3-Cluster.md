@@ -2,6 +2,11 @@
 
 ---
 
+> [!IMPORTANT]
+> Before getting started, consider working through the guides `README.md` and `Docker-Registry.md` in order to set everything needed in advance.
+
+---
+
 ### Set up the load balancer
 * Add the load balancer's dns name (lb):
 > [!NOTE]

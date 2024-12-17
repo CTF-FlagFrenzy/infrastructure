@@ -2,6 +2,11 @@
 
 ---
 
+> [!IMPORTANT]
+> Before getting started, consider working through the guide `README.md` in order to set everything needed in advance.
+
+---
+
 ### Deploy Registry
 * Create a directory to store the configuration as well as images and navigate into it:
 ```bash
