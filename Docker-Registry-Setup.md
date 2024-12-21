@@ -3,7 +3,7 @@
 ---
 
 > [!IMPORTANT]
-> Before getting started, consider working through the guide `README.md` in order to set everything needed in advance.
+> Before getting started, consider working through the guide `README.md` in order to set up everything needed in advance.
 
 ---
 

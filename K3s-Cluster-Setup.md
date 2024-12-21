@@ -3,7 +3,7 @@
 ---
 
 > [!IMPORTANT]
-> Before getting started, consider working through the guides `README.md` and `Docker-Registry.md` in order to set everything needed in advance.
+> Before getting started, consider working through the guides `README.md` and `Docker-Registry.md` in order to set up everything needed in advance.
 
 ---
 
@@ -291,7 +291,32 @@ kubectl proxy
 
 ---
 
-### Implement private registry
+### Implement private registry v1 (recommended)
+* Add the registry's dns name to the server:
+> [!NOTE]
+> Change `ip` to the registry's ip address.
+```bash
+sudo -- sh -c "echo 'ip registry' >> /etc/hosts"
+```
+* Create a secret for the registry's credentials and general information:
+> [!NOTE]
+> Change `myuser` and `mypassword` to the correct values.
+```bash
+kubectl create secret docker-registry registry-credentials \
+  --docker-server=https://registry:5000 \
+  --docker-username=myuser \
+  --docker-password=mypassword \
+```
+* Verify the secrets:
+```bash
+kubectl describe secret registry-credentials
+```
+
+---
+
+### Implement private registry v2 (not recommended)
+> [!WARNING]
+> This might cause some errors.
 * Add the registry's dns name to the server:
 > [!NOTE]
 > Change `ip` to the registry's ip address.
