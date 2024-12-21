@@ -3,7 +3,7 @@
 ---
 
 > [!IMPORTANT]
-> Before getting started, consider working through the guides `README.md`, `Docker-Registry.md` and `K3-Cluster.md` in order to set up everything needed in advance.
+> Before getting started, consider working through the guides `README.md`, `Docker-Registry-Setup.md` and `K3s-Cluster-Setup.md` in order to set up everything needed in advance.
 
 ---
 
