@@ -25,40 +25,38 @@ kubectl describe secret teamkey-1
 ---
 
 ### Deploy the service 
-> [!CAUTION]
-> ***Not dynamic yet!!!*** The challanges run with static names so far in order to make development easier.
 * Make sure the needed image is on the registry by accessing the web registry's interface `https://registry:8443`.
 * Create a deployment script `deployment.yml` for the kubernetes deployment as well as service:
 ```yml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: challenge-1-deployment
+  name: deployment-${TEAMID}-${CHALLENGE}
   labels:
-    app: challenge1
-    team: team1
+    app: ${CHALLENGE}
+    team: '${TEAMID}'
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: challenge1
-      team: '1'
+      app: ${CHALLENGE}
+      team: '${TEAMID}'
   template:
     metadata:
       labels:
-        app: challenge1
-        team: '1'
+        app: ${CHALLENGE}
+        team: '${TEAMID}'
     spec:
       containers:
-      - name: challenge1
-        image: registry:5000/ceasar_cypher
+      - name: ${CHALLENGE}
+        image: registry:5000/${CHALLENGE}
         ports:
           - containerPort: 80
         env:
         - name: TEAMKEY
           valueFrom:
             secretKeyRef:
-              name: key-team1
+              name: key-team${TEAMID}
               key: TEAMKEY
       imagePullSecrets:
       - name: registry-credentials
@@ -66,18 +64,29 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: challenge-1-service
+  name: service-${TEAMID}-${CHALLENGE}
 spec:
   selector:
-    app: challenge1
-    team: '1'
+    app: ${CHALLENGE}
+    team: '${TEAMID}'
   ports:
   - protocol: TCP
     port: 80
 ```
-* Deploy the challenge:
+* Set the env variables in order to deploy dynamically:
+> [!NOTE]
+> Replace `1` with the right ID and `mychallenge` with the the name of the image in the registry.
+```bash
+export TEAMID=1
+export CHALLENGE=mychallenge
+```
+* Deploy the challenge (static - DON'T DO THAT):
 ```bash
 kubectl apply -f deployment.yml
+```
+* Deploy challenge (dynamic with the variables set earlier):
+```bash
+envsubst < deployment.yml | kubectl apply -f -
 ```
 * Check if the pod(s) is/are deployed:
 ```bash
@@ -135,8 +144,6 @@ dig mychallenge.web @127.0.0.1
 ---
 
 ### Set up Ingress to Forward Services
-> [!CAUTION]
-> ***Not dynamic yet!!!*** The ingress scripts run with static names so far in order to make development easier.
 * On the load balancer, edit the `nginx.conf` file by adding this:
 > [!NOTE]
 > Change the port to the right one for the internal traefik load balancer. Find the port when executing `kubectl get svc -n kube-system`.
@@ -183,22 +190,26 @@ docker compose up --build -d nginx
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: challenge-1-ingress
+  name: ingress-${TEAMID}-${CHALLENGE}
   namespace: default
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
-  - host: "challenge-1.web"
+  - host: "${TEAMID}-${CHALLENGE}.webapp-flagfrenzy.at"
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: challenge-1-service
+            name: service-${TEAMID}-${CHALLENGE}
             port:
               number: 80
+```
+* Deploy the ingress:
+```bash
+envsubst < ingress.yml | kubectl apply -f -
 ```
 
 ---
