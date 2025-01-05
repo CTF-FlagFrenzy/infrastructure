@@ -2,6 +2,11 @@
 
 ---
 
+> [!IMPORTANT]
+> Before getting started, consider setting up blank ubuntu servers (1 Load Balancer / 2 Matser Nodes / 4 Agent Nodes) in advance. In this use case, everything is testet and working using ubuntu 22.04 as well as 24.x.
+
+---
+
 ### Installing Docker
 * Uninstall all conflicting packages:
 ```bash
@@ -60,4 +65,39 @@ export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/docker.sock
 * Verify that Docker is running rootless:
 ```bash
 docker run hello-world
+```
+
+---
+
+### Set up a portainer for easier management
+* Create a repository for portainer and navigate there:
+```bash
+mkdir ~/portainer && \
+cd ~/portainer
+```
+* Create the configuration file `docker-compose.yml`:
+```yaml
+networks:
+  my-network:
+
+volumes:
+  portainer-data:
+
+services:
+  # Service for management container
+  manage-docker:
+    image: portainer/portainer-ce
+    ports:
+      - "9500:9443"
+    volumes:
+      - portainer-data:/data
+      - $XDG_RUNTIME_DIR/docker.sock:/var/run/docker.sock # Portainer - rootless mount
+    restart: always
+
+    networks:
+      - my-network
+```
+* Deploy the Service (it can be accessed using `<your_server_ip>:9500` after a few seconds):
+```bash
+docker compose up --build -d
 ```
