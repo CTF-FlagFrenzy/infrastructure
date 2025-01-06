@@ -80,7 +80,7 @@ spec:
 export TEAMID=1
 export CHALLENGE=mychallenge
 ```
-* Deploy the challenge (static - DON'T DO THAT):
+* Deploy the challenge (static - **DON'T DO THAT**):
 ```bash
 kubectl apply -f deployment.yml
 ```
@@ -146,7 +146,7 @@ dig mychallenge.web @127.0.0.1
 ### Set up Ingress to Forward Services
 * On the load balancer, edit the `nginx.conf` file by adding this:
 > [!NOTE]
-> Change the port to the right one for the internal traefik load balancer. Find the port when executing `kubectl get svc -n kube-system`.
+> Change the port to the right one for the internal traefik load balancer. Find the port when executing `kubectl get svc -n kube-system`. Further, consider changing the second level domain `web` to the right one.
 ```conf
 # Load balancer for K3s
 http {
@@ -156,12 +156,23 @@ http {
         server 192.168.80.32:32216; # K3s master node 2
     }
 
+
     server {
         listen 80;
-        server_name ~^(?<subdomain>.+)\.web$;
+        server_name ~^(?<subdomain>.+)\.webapp-flagfrenzy.at$;
+        return 301 https://$host$request_uri; # Redirect HTTP to HTTPS
+    }
+
+
+    server {
+        listen 443 ssl;
+        server_name ~^(?<subdomain>.+)\.webapp-flagfrenzy.at$;
+
+        ssl_certificate /etc/nginx/certs/domain.crt;  # Path to your TLS certificate
+        ssl_certificate_key /etc/nginx/certs/domain.key; # Path to your private key
 
         location / {
-            proxy_pass http://traefik_nodes;
+            proxy_pass http://traefik_nodes; # Forward to Traefik using HTTP
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -172,13 +183,18 @@ http {
 ```
 * Redeploy the nginx service:
 > [!WARNING]
-> Before redeploying, consider exposing the nginx' port 80 in order to forward requests comming in on the host's port 80 to the container. Add the following line to the `docker-compose.yml` file in the ports section on within the nginx service:
+> Before redeploying, consider exposing the nginx' port 80 as well as 443 in order to forward requests comming in on the host's port 80/443 to the container. Further, add the certificates for HTTPS, to enable TLS.  
+> Add the following lines to the `docker-compose.yml` file in the ports section on within the nginx service:
 > ```yaml
 > --- other configurations ---
 >
 > ports:
 >   - 6443:6443
->   - 80:80 # add this line
+>   - 80:80 # HTTP ( --- add this line --- )
+>   - 443:443 # HTTPS ( --- add this line --- )
+> volumes:
+>   - ./nginx.conf:/etc/nginx/nginx.conf:ro # Mount Nginx configuration file as read-only
+>   - ./certs:/etc/nginx/certs:ro # Mount certificates directory as read-only ( --- add this line --- )
 >
 > --- other configurations ---
 > ```

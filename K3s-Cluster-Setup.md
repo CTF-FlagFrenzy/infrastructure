@@ -16,8 +16,13 @@ sudo -- sh -c "echo 'ip lb' >> /etc/hosts"
 ```
 * Create a directory to store the configuration as well as the portainer data and navigate into it:
 ```bash
-mkdir -p ~/loadbalancer/{db,portainer} && \
+mkdir -p ~/loadbalancer/{db,portainer,certs} && \
 cd ~/loadbalancer
+```
+> [!NOTE]
+> Replace `hostname` with the hostname of the machine the container stack is running on (`ct` is the global DNS - delete or change it if there is another DNS then the hostname)
+```bash
+openssl req -x509 -nodes -newkey rsa:2048 -keyout certs/domain.key -out certs/domain.crt -days 365 -addext "subjectAltName = DNS.1:hostname,DNS.2:ct"
 ```
 * Create and open the `docker-compose.yml` file and define the nginx as well as the portainer:
 ```yaml
@@ -54,7 +59,7 @@ services:
     image: nginx:latest
     restart: always # Always restart if the container stops
     ports:
-      - 6443:6443 # Expose Nginx on port 8443 (HTTPS)
+      - 6443:6443 # Expose Nginx on port 8443 (HTTPS) for K3s
 
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro # Mount Nginx configuration file as read-only
