@@ -5,9 +5,6 @@
 > [!IMPORTANT]
 > Before getting started, consider working through the guides `README.md`, `Docker-Registry-Setup.md` and `K3s-Cluster-Setup.md` in order to set up everything needed in advance.
 
-> [!CAUTION]
-> The values provided are mostly test values - This is **NOT** the final, dynamic version. Further, no TLS is implemented yet. This will be integrated soon though.
-
 ---
 
 ### Load / Create secrets for team-keys
@@ -24,7 +21,7 @@ kubectl describe secret teamkey-1
 
 ---
 
-### Deploy the service 
+### Deploy a challenge 
 * Make sure the needed image is on the registry by accessing the web registry's interface `https://registry:8443`.
 * Create a deployment script `deployment.yml` for the kubernetes deployment as well as service:
 ```yml
@@ -73,77 +70,59 @@ spec:
   - protocol: TCP
     port: 80
 ```
-* Set the env variables in order to deploy dynamically:
-> [!NOTE]
-> Replace `1` with the right ID and `mychallenge` with the the name of the image in the registry.
-```bash
-export TEAMID=1
-export CHALLENGE=mychallenge
+* Create a ingress script `ingress.yml` in order to forward / expose the service:
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-${TEAMID}-${CHALLENGE}
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: "${SUBDOMAIN}.webapp-flagfrenzy.at"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: service-${TEAMID}-${CHALLENGE}
+            port:
+              number: 80
 ```
-* Deploy the challenge (static - **DON'T DO THAT**):
+* Create a bash script `script.sh` that automates the process:
 ```bash
-kubectl apply -f deployment.yml
-```
-* Deploy challenge (dynamic with the variables set earlier):
-```bash
+#!/bin/bash
+
+IN_TEAMID=$1
+IN_CHALLENGE=$2
+
+export TEAMID=$IN_TEAMID
+export CHALLENGE=$IN_CHALLENGE
+export SUBDOMAIN=`echo 'Attention: Team '$TEAMID' wants to steal the recipe for '$CHALLENGE'-cookies' | sha256sum | cut -f1 -d" "`
+
+printf 'Deploying challenge "'$CHALLENGE'" for team '$TEAMID'...\n'
 envsubst < deployment.yml | kubectl apply -f -
-```
-* Check if the pod(s) is/are deployed:
-```bash
-kubectl get pods
-```
-* Check if the service is running:
-```bash
-kubectl get svc
-```
-* ***Optional:*** To verify the service is running, a self-destroying test container can be created for testing (afterwards, the tests needed can be performed):
-```bash
-kubectl run test-pod --rm -it --image=busybox:1.28 --restart=Never -- sh
-```
+envsubst < ingress.yml | kubectl apply -f -
 
----
-
-### Set up a DNS-Server for forwarding subdomains
-* Install dnsmasq:
-```bash
-sudo apt-get install dnsmasq
+printf '\nDone!\n'
+printf '\nExposing challenge at...\n'
+echo $SUBDOMAIN'.webapp-flagfrenzy.at'
 ```
-* Edit `/etc/dnsmasq.conf` in order to set the dns entries:
+* Set permissions for the script:
+```bash
+chmod 775 script.sh
+```
+* Deploy the challenge:
 > [!NOTE]
-> Change the ip address as well as the name if needed
+> Change the values to deploy the correct service for the correct team
+> [!CAUTION]
+> The challenge name for the script has to match the registry entry. Consider to use lower case letters seperated by '-'.
 ```bash
-address=/web/192.168.80.33
-address=/.web/192.168.80.33
+./script.sh <TEAMID> <CHALLENGE>
 ```
-* Restart the service:
-> [!WARNING]
-> When encountering the issue `dnsmasq[585141]: failed to create listening socket for port 53: Address already in use` on restart, consider these three steps in order to resolve the problem:
-> * Disable the system's resolved service:
-> ```bash
-> sudo systemctl disable --now systemd-resolved
-> ```
-> * Delete the `resolv.conf` file:
-> ```bash
-> sudo rm -f /etc/resolv.conf
-> ```
-> * Add localhost as nameserver to replace the configuration with dnsmasq
-> ```bash
-> echo "nameserver 127.0.0.1" | sudo tee /etc/resolv.conf
-> ```
-```bash
-sudo systemctl restart dnsmasq
-```
-* Verify the installation by checking the DNS resolution:
-```bash
-dig web @127.0.0.1
-```
-```bash
-dig mychallenge.web @127.0.0.1
-```
-
----
-
-### Set up Ingress to Forward Services
 * On the load balancer, edit the `nginx.conf` file by adding this:
 > [!NOTE]
 > Change the port to the right one for the internal traefik load balancer. Find the port when executing `kubectl get svc -n kube-system`. Further, consider changing the second level domain `web` to the right one.
@@ -152,8 +131,8 @@ dig mychallenge.web @127.0.0.1
 http {
     upstream traefik_nodes {
         least_conn; # Distribute traffic based on least connections
-        server 192.168.80.31:32216; # K3s master node 1
-        server 192.168.80.32:32216; # K3s master node 2
+        server 192.168.80.31:32430; # K3s master node 1
+        server 192.168.80.32:32430; # K3s master node 2
     }
 
 
@@ -201,36 +180,52 @@ http {
 ```bash
 docker compose up --build -d nginx
 ```
-* Create a ingress script `ingress.yml` in order to forward / expose the service:
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: ingress-${TEAMID}-${CHALLENGE}
-  namespace: default
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-spec:
-  rules:
-  - host: "${TEAMID}-${CHALLENGE}.webapp-flagfrenzy.at"
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: service-${TEAMID}-${CHALLENGE}
-            port:
-              number: 80
-```
-* Deploy the ingress:
+
+---
+
+### Set up a DNS-Server for forwarding subdomains (only locally)
+* Install dnsmasq:
 ```bash
-envsubst < ingress.yml | kubectl apply -f -
+sudo apt-get install dnsmasq
+```
+* Edit `/etc/dnsmasq.conf` in order to set the dns entries:
+> [!NOTE]
+> Change the ip address as well as the name if needed
+```bash
+address=/web/192.168.80.33
+address=/.web/192.168.80.33
+```
+* Restart the service:
+> [!WARNING]
+> When encountering the issue `dnsmasq[585141]: failed to create listening socket for port 53: Address already in use` on restart, consider these three steps in order to resolve the problem:
+> * Disable the system's resolved service:
+> ```bash
+> sudo systemctl disable --now systemd-resolved
+> ```
+> * Delete the `resolv.conf` file:
+> ```bash
+> sudo rm -f /etc/resolv.conf
+> ```
+> * Add localhost as nameserver to replace the configuration with dnsmasq
+> ```bash
+> echo "nameserver 127.0.0.1" | sudo tee /etc/resolv.conf
+> ```
+```bash
+sudo systemctl restart dnsmasq
+```
+* Verify the installation by checking the DNS resolution:
+```bash
+dig web @127.0.0.1
+```
+```bash
+dig mychallenge.web @127.0.0.1
 ```
 
 ---
 
 ### Troubleshooting
+> [!TIP]
+> When shutting down the cluster VMs, consider starting them in the correct order to prevent conflicts. (load balancer --> masters --> workers). Ensure this step before troubleshooting.
 **Verify the ingress resource:**
 * The output should confirm:
   * The host matches the expected subdomain (e.g., challenge-1.web).
