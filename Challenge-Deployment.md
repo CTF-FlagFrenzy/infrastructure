@@ -103,7 +103,7 @@ export TEAMID=$IN_TEAMID
 export CHALLENGE=$IN_CHALLENGE
 export SUBDOMAIN=`echo 'Attention: Team '$TEAMID' wants to steal the recipe for '$CHALLENGE'-cookies' | sha256sum | cut -f1 -d" "`
 
-printf 'Deploying challenge "'$CHALLENGE'" for team '$TEAMID'...\n'
+printf 'Deploying challenge "'$CHALLENGE'" for team '$TEAMID'...\n\n'
 envsubst < deployment.yml | kubectl apply -f -
 envsubst < ingress.yml | kubectl apply -f -
 
@@ -117,12 +117,10 @@ chmod 775 script.sh
 ```
 * Deploy the challenge:
 > [!NOTE]
-> Change the values to deploy the correct service for the correct team.
+> Change the values to deploy the correct service for the correct team. Further, the challenge name for the script has to match the registry entry. Consider to use lower case letters seperated by '-'.
 ```bash
 ./script.sh <TEAMID> <CHALLENGE>
 ```
-> [!CAUTION]
-> The challenge name for the script has to match the registry entry. Consider to use lower case letters seperated by '-'.
 * On the load balancer, edit the `nginx.conf` file by adding this:
 > [!NOTE]
 > Change the port to the right one for the internal traefik load balancer. Find the port when executing `kubectl get svc -n kube-system`. Further, consider changing the second level domain `web` to the right one.
