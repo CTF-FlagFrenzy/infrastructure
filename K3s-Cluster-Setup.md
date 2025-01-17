@@ -12,7 +12,7 @@
 > [!NOTE]
 > Change `ip` to the load balancer's ip address.
 ```bash
-sudo -- sh -c "echo 'ip lb' >> /etc/hosts"
+sudo -- sh -c "echo 'ip ct.ctf.htl-villach.at' >> /etc/hosts"
 ```
 * Create a directory to store the configuration as well as the portainer data and navigate into it:
 ```bash
@@ -22,7 +22,7 @@ cd ~/loadbalancer
 > [!NOTE]
 > Replace `hostname` with the hostname of the machine the container stack is running on (`ct` is the global DNS - delete or change it if there is another DNS then the hostname)
 ```bash
-openssl req -x509 -nodes -newkey rsa:2048 -keyout certs/domain.key -out certs/domain.crt -days 365 -addext "subjectAltName = DNS.1:hostname,DNS.2:ct"
+openssl req -x509 -nodes -newkey rsa:2048 -keyout certs/domain.key -out certs/domain.crt -days 365 -addext "subjectAltName = DNS.1:hostname,DNS.2:ct.ctf.htl-villach.at"
 ```
 * Create and open the `docker-compose.yml` file and define the nginx as well as the portainer:
 ```yaml
@@ -118,8 +118,8 @@ events {}
 
 stream {
   upstream k3s_servers {
-    server 192.168.80.31:6443;
-    server 192.168.80.32:6443;
+    server 172.23.0.56:6443;
+    server 172.23.0.57:6443;
   }
 
   server {
@@ -135,7 +135,7 @@ MYSQL_USER=k3s
 MYSQL_PASSWORD=MySuperSecurePassw0rd
 MYSQL_ROOT_PASSWORD=MySuperSecureR00tPassw0rd
 MYSQL_DATABASE_PORT=3306
-MYSQL_DATABASE_HOST=lb
+MYSQL_DATABASE_HOST=ct.ctf.htl-villach.at
 K3S_TOKEN=MySuperSecureT0ken
 ```
 * Deploy the container stack with its services:
@@ -150,7 +150,7 @@ docker compose up --build -d
 > [!NOTE]
 > Change `ip` to the load balancer's ip address.
 ```bash
-sudo -- sh -c "echo 'ip lb' >> /etc/hosts"
+sudo -- sh -c "echo 'ip ct.ctf.htl-villach.at' >> /etc/hosts"
 ```
 * Create a directory for all important k3s data:
 ```bash
@@ -173,7 +173,7 @@ echo $K3S_DATASTORE_ENDPOINT
 curl -sfL https://get.k3s.io | sh -s - server \
 --token=$K3S_TOKEN \
 --node-taint CriticalAddonsOnly=true:NoExecute \
---tls-san lb
+--tls-san ct.ctf.htl-villach.at
 ```
 * Verify the installation, display all pods:
 ```bash
@@ -194,7 +194,7 @@ sudo chmod 644 /etc/rancher/k3s/k3s.yaml
 > [!NOTE]
 > Change `ip` to the load balancer's ip address.
 ```bash
-sudo -- sh -c "echo 'ip lb' >> /etc/hosts"
+sudo -- sh -c "echo 'ip ct.ctf.htl-villach.at' >> /etc/hosts"
 ```
 * Create a directory for all important k3s data:
 ```bash
@@ -213,7 +213,7 @@ echo $K3S_DATASTORE_ENDPOINT
 * Install k3s:
 ```bash
 curl -sfL https://get.k3s.io | \
-K3S_URL=https://lb:6443 \
+K3S_URL=https://ct.ctf.htl-villach.at:6443 \
 K3S_TOKEN=$K3S_TOKEN \
 sh -
 ```

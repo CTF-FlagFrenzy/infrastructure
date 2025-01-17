@@ -53,7 +53,7 @@ spec:
         - name: TEAMKEY
           valueFrom:
             secretKeyRef:
-              name: key-team${TEAMID}
+              name: teamkey-${TEAMID}
               key: TEAMKEY
       imagePullSecrets:
       - name: registry-credentials
@@ -81,7 +81,7 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
-  - host: "${SUBDOMAIN}.webapp-flagfrenzy.at"
+  - host: "${SUBDOMAIN}.web.ctf.htl-villach.at"
     http:
       paths:
       - path: /
@@ -109,7 +109,7 @@ envsubst < ingress.yml | kubectl apply -f -
 
 printf '\nDone!\n'
 printf '\nExposing challenge at...\n'
-echo $SUBDOMAIN'.webapp-flagfrenzy.at'
+echo $SUBDOMAIN'.web.ctf.htl-villach.at'
 ```
 * Set permissions for the script:
 ```bash
@@ -129,21 +129,21 @@ chmod 775 script.sh
 http {
     upstream traefik_nodes {
         least_conn; # Distribute traffic based on least connections
-        server 192.168.80.31:32430; # K3s master node 1
-        server 192.168.80.32:32430; # K3s master node 2
+        server 172.23.0.56:32430; # K3s master node 1
+        server 172.23.0.57:32430; # K3s master node 2
     }
 
 
     server {
         listen 80;
-        server_name ~^(?<subdomain>.+)\.webapp-flagfrenzy.at$;
+        server_name ~^(?<subdomain>.+)\.web.ctf.htl-villach.at$;
         return 301 https://$host$request_uri; # Redirect HTTP to HTTPS
     }
 
 
     server {
         listen 443 ssl;
-        server_name ~^(?<subdomain>.+)\.webapp-flagfrenzy.at$;
+        server_name ~^(?<subdomain>.+)\.web.ctf.htl-villach.at$;
 
         ssl_certificate /etc/nginx/certs/domain.crt;  # Path to your TLS certificate
         ssl_certificate_key /etc/nginx/certs/domain.key; # Path to your private key
