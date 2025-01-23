@@ -211,22 +211,6 @@ services:
 ```bash
 docker compose up --build -d
 ```
-* Make sure the needed image is on the registry by accessing the web registry's interface `https://registry:8443`.
-* Test the deployment endpoint:
-> [!NOTE]
-> Change the values for Bearer `mySuperSecureKey`, teamid `1` as well as challenge `ceasar-cipher` to the correct ones.
-```bash
-curl -X POST "http://localhost:8080/deploy"  \
--H "Authorization: Bearer mySuperSecureKey"  \
--H "Content-Type: application/json"  \
--d '{"teamid":"1","challenge":"ceasar-cipher"}'
-```
-* The output should look like this:
-```bash
-{
-  "message":"Deployment successful",
-  "url":"https://<hash>.web.ctf.htl-villach.at"}
-```
 
 ---
 
@@ -287,6 +271,23 @@ http {
 > ```
 ```bash
 docker compose up --build -d nginx
+```
+* Make sure the needed image is on the registry by accessing the web registry's interface `https://registry:8443`.
+* Test the deployment endpoint:
+> [!NOTE]
+> Change the values for Bearer `mySuperSecureKey`, teamid `1` as well as challenge `ceasar-cipher` to the correct ones.
+```bash
+curl -X POST "http://localhost:8080/deploy"  \
+-H "Authorization: Bearer mySuperSecureKey"  \
+-H "Content-Type: application/json"  \
+-d '{"teamid":"1","challenge":"ceasar-cipher"}'
+```
+* The output should look like this:
+```bash
+{
+  "message":"Deployment successful",
+  "url":"https://<hash>.web.ctf.htl-villach.at"
+}
 ```
 
 ---
