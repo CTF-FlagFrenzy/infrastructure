@@ -21,8 +21,55 @@ kubectl describe secret teamkey-1
 
 ---
 
-### Deploy a challenge 
-* Make sure the needed image is on the registry by accessing the web registry's interface `https://registry:8443`.
+### Set up API Endpoints for Challenge Deployment
+* On the master nodes, create a directory for the deployment service and navigate there:
+```bash
+mkdir -p ~/fastapi-deployment-api
+cd ~/fastapi-deployment-api
+```
+* Create an `main.py` file:
+```py
+from fastapi import FastAPI, HTTPException, Header
+from pydantic import BaseModel
+import subprocess
+import os
+
+app = FastAPI()
+
+# Environment variable for API key
+API_KEY = os.getenv("API_KEY", "default_secure_key")
+
+# Define the request body model
+class DeployRequest(BaseModel):
+    teamid: str
+    challenge: str
+
+@app.post("/deploy")
+async def deploy_service(request: DeployRequest, authorization: str = Header(None)):
+    # Check authorization header
+    if authorization != f"Bearer {API_KEY}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        # Extract values from the request body
+        teamid = request.teamid
+        challenge = request.challenge
+
+        # Construct and run deployment script
+        command = f"/bin/bash ./script.sh {teamid} {challenge}"
+        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+
+        if result.returncode == 0:
+            output = result.stdout.strip()
+            # Extract service URL from script output
+            service_url = [line for line in output.splitlines() if line.startswith("https")][0]
+            return {"message": "Deployment successful", "url": service_url}
+        else:
+            raise HTTPException(status_code=500, detail=result.stderr)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+```
 * Create a deployment script `deployment.yml` for the kubernetes deployment as well as service:
 ```yml
 apiVersion: apps/v1
@@ -111,16 +158,64 @@ printf '\nDone!\n'
 printf '\nExposing challenge at...\n'
 echo $SUBDOMAIN'.web.ctf.htl-villach.at'
 ```
-* Set permissions for the script:
-```bash
-chmod 775 script.sh
+* Create a `Dockerfile`:
+```Dockerfile
+# Use an official Python image
+FROM python:3.10-slim
+
+# Install gettext for envsubst
+RUN apt-get update && apt-get install -y gettext && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy application files
+COPY app .
+
+# Install FastAPI and Uvicorn
+RUN pip install fastapi uvicorn
+
+# Expose port 8080
+EXPOSE 8080
+
+# Run the FastAPI application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
 ```
-* Deploy the challenge:
-> [!NOTE]
-> Change the values to deploy the correct service for the correct team. Further, the challenge name for the script has to match the registry entry. Consider to use lower case letters seperated by '-'.
-```bash
-./script.sh <TEAMID> <CHALLENGE>
+* Create a `.env` file:
+```env
+API_KEY=9cca687e13ef1a6d6b0dbd037d1acd92
 ```
+* Create a `docker-compose.yml` file:
+```yml
+version: '3.8'
+
+services:
+  deployment-api:
+    build: .
+    container_name: fastapi-deployment
+    ports:
+      - "8080:8080"
+
+    env_file: .env
+    environment:
+      - API_KEY=${API_KEY}
+
+    volumes:
+      - ./app:/app
+      - /usr/local/bin/kubectl:/usr/local/bin/kubectl # Bind kubectl binary
+      - /etc/rancher/k3s/k3s.yaml:/root/.kube/config:ro # Bind kube config for kubectl
+
+    restart: always
+```
+* Deploy the service:
+```bash
+docker compose up --build -d
+```
+* Make sure the needed image is on the registry by accessing the web registry's interface `https://registry:8443`.
+
+---
+
+### Reconfigure the load balancer
 * On the load balancer, edit the `nginx.conf` file by adding this:
 > [!NOTE]
 > Change the port to the right one for the internal traefik load balancer. Find the port when executing `kubectl get svc -n kube-system`. Further, consider changing the second level domain `web` to the right one.
