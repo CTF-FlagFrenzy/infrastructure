@@ -292,7 +292,7 @@ curl -X POST "http://localhost:8080/deploy"  \
 
 ---
 
-### Securing the endpoints
+### Secure the endpoints
 * Create a service account:
 ```bash
 kubectl create serviceaccount deployer
@@ -305,7 +305,7 @@ kubectl create rolebinding deployer-binding --clusterrole=edit --serviceaccount=
 ```bash
 kubectl get serviceaccount deployer -o yaml
 ```
-* If ***NOT***, create the secret manually and path the user (+ verify again):
+* If ***NOT***, create the secret manually and patch the user (+ verify again):
 ```bash
 kubectl create secret generic deployer-token --from-literal=token=mySuperSecureToken --dry-run=client -o yaml | kubectl apply -f - && \
 kubectl patch serviceaccount deployer -p '{"secrets":[{"name": "deployer-token"}]}' && \
