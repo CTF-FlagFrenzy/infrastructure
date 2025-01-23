@@ -292,6 +292,70 @@ curl -X POST "http://localhost:8080/deploy"  \
 
 ---
 
+### Securing the endpoints
+* Create a service account:
+```bash
+kubectl create serviceaccount deployer
+```
+* Bind the service account to a role:
+```bash
+kubectl create rolebinding deployer-binding --clusterrole=edit --serviceaccount=default:deployer
+```
+* Check the token is created automatically (look for `secrets`):
+```bash
+kubectl get serviceaccount deployer -o yaml
+```
+* If ***NOT***, create the secret manually and path the user (+ verify again):
+```bash
+kubectl create secret generic deployer-token --from-literal=token=mySuperSecureToken --dry-run=client -o yaml | kubectl apply -f - && \
+kubectl patch serviceaccount deployer -p '{"secrets":[{"name": "deployer-token"}]}' && \
+kubectl get serviceaccount deployer -o yaml
+```
+* Retrieve the token (the output should be the valid token set earlier):
+```bash
+kubectl get secret deployer-token -o jsonpath='{.data.token}' | base64 --decode
+```
+* Set credentials for the deployer:
+> [!IMPORTANT]
+> This command has to be executed with sudo
+```bash
+sudo kubectl config set-credentials deployer --token=mySuperSecureToken
+```
+* Set the context for the deployer user:
+> [!IMPORTANT]
+> This command has to be executed with sudo
+```bash
+sudo kubectl config set-context deployer-context --cluster=default --user=deployer
+```
+* Verify the configuration:
+```bash
+kubectl config get-contexts
+```
+* Export the context:
+```bash
+kubectl config view --minify --context=deployer-context --raw > /tmp/deployer-kubeconfig.yaml && \
+sudo mv /tmp/deployer-kubeconfig.yaml /etc/rancher/k3s/deployer-kubeconfig.yaml
+```
+* Edit the `docker-compose.yml` file:
+```yml
+ volumes:
+      - ./app:/app
+      - /usr/local/bin/kubectl:/usr/local/bin/kubectl
+      - /etc/rancher/k3s/k3s.yaml:/root/.kube/config:ro # --- delete this ---
+      - /etc/rancher/k3s/deployer-kubeconfig.yaml:/root/.kube/config:ro # --- add this ---
+```
+* Redeploy the container:
+```bash
+docker compose down -v && \
+docker cmopose up --build -d
+```
+* Test the security implementation by navigating inside the container and listing all nodes:
+```
+kubectl get nodes
+```
+
+---
+
 ### Set up a DNS-Server for forwarding subdomains (only locally)
 * Install dnsmasq:
 ```bash
