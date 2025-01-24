@@ -156,7 +156,7 @@ envsubst < ingress.yml | kubectl apply -f -
 
 printf '\nDone!\n'
 printf '\nExposing challenge at...\n'
-echo $SUBDOMAIN'.web.ctf.htl-villach.at'
+echo 'https://'$SUBDOMAIN'.web.ctf.htl-villach.at'
 ```
 * Create a `Dockerfile`:
 ```Dockerfile
@@ -293,6 +293,8 @@ curl -X POST "http://localhost:8080/deploy"  \
 ---
 
 ### Secure the endpoints
+> [!CAUTION]
+> It does not have to be done - already secure
 * Create a service account:
 ```bash
 kubectl create serviceaccount deployer
