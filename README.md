@@ -101,3 +101,52 @@ services:
 ```bash
 docker compose up --build -d
 ```
+
+---
+
+### Set up podman-compose (when rootless docker does not work)
+* Disabel the docker socket:
+```bash
+sudo systemctl disable docker && \
+sudo systemctl disable docker.socket
+```
+* Remove all docker packets:
+```bash
+sudo dnf remove -y docker docker-client docker-client-latest docker-common docker-latest docker-latest-logrotate docker-logrotate docker-engine && \
+sudo dnf remove -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+* Delete the directories:
+```bash
+sudo rm -rf /var/lib/docker /var/lib/containerd && \
+sudo rm -f /usr/local/bin/docker-compose && \
+sudo rm -f /etc/yum.repos.d/docker-ce.repo
+```
+* Clear the Cache:
+```bash
+sudo dnf clean all && \
+sudo dnf makecache
+```
+* Install podman-compose:
+```bash
+sudo dnf install -y podman podman-docker && \
+sudo dnf install -y python3-pip && \
+sudo pip3 install podman-compose
+```
+* Start podman:
+```bash
+sudo systemctl --user enable podman.socket
+```
+* Export the runtime directory:
+> [!NOTE]
+> If an error occurs, confirm the runtime directory. If not, relogin
+> ```bash
+> id -u && \
+> ls -ld /run/user/$(id -u)
+> ```
+```bash
+export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock
+```
+* Verify installation:
+```bash
+podman run hello-world
+```
