@@ -25,6 +25,13 @@ cd ~/loadbalancer
 openssl req -x509 -nodes -newkey rsa:2048 -keyout certs/domain.key -out certs/domain.crt -days 365 -addext "subjectAltName = DNS.1:hostname,DNS.2:ct.ctf.htl-villach.at"
 ```
 * Create and open the `docker-compose.yml` file and define the nginx as well as the portainer:
+> [!WARNING]
+> When using podman-compose instead of docker, consider changing the portainer mout for the socket.
+> ```yaml
+>     volumes:
+>       - my-portainer-data:/data # Mount Portainer data volume
+>       - $XDG_RUNTIME_DIR/podman/podman.sock:/var/run/docker.sock # --- change this ---
+> ```
 ```yaml
 version: '3' # Specify Docker Compose version
 
@@ -139,9 +146,19 @@ MYSQL_DATABASE_HOST=ct.ctf.htl-villach.at
 K3S_TOKEN=MySuperSecureT0ken
 ```
 * Deploy the container stack with its services:
+> [!WARNING]
+> When using podman-compose, consider binding the session so that the pods don't go down after the session is closed. Afterwards, deploy the pods using `podman-compose up --build -d`
+> ```bash
+> loginctl enable-linger
+> ```
 ```bash
 docker compose up --build -d
 ```
+> [!TIP]
+> If the database is not reachable, consider allowing traffic trhough the firewall.
+> ```bash
+> sudo firewall-cmd --add-port=3306/tcp --permanent
+> ```
 
 ---
 
@@ -185,6 +202,10 @@ sudo k3s kubectl get nodes
 * Use this command to make further work with `k3s` rootless:
 ```bash
 sudo chmod 644 /etc/rancher/k3s/k3s.yaml
+```
+* If it does not work permanently consider changing the ownership:
+```bash
+sudo chmod plonerf: /etc/rancher/k3s/k3s.yaml
 ```
 
 ---
