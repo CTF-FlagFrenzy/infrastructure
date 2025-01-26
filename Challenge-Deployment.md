@@ -21,11 +21,11 @@ kubectl describe secret teamkey-1
 
 ---
 
-### Set up API Endpoints for Challenge Deployment
+### Set up API Endpoints for Challenge Deployment / Deprovision
 * On the master nodes, create a directory for the deployment service and navigate there:
 ```bash
-mkdir -p ~/fastapi-deployment-api
-cd ~/fastapi-deployment-api
+mkdir -p ~/fastapi-deployment-api/app
+cd ~/fastapi-deployment-api/app
 ```
 * Create an `main.py` file:
 ```py
@@ -180,7 +180,7 @@ envsubst < ingress.yml | kubectl apply -f -
 
 printf '\nDone!\n'
 printf '\nExposing challenge at...\n'
-echo 'https://'$SUBDOMAIN'.web.ctf.htl-villach.at'
+printf 'https://'$SUBDOMAIN'.web.ctf.htl-villach.at'
 ```
 * Create a bash script `deprovision.sh` that deletes the challenge:
 ```bash
@@ -198,7 +198,12 @@ kubectl delete deployment deployment-${TEAMID}-${CHALLENGE}
 kubectl delete service service-${TEAMID}-${CHALLENGE}
 kubectl delete ingress ingress-${TEAMID}-${CHALLENGE}
 
-printf '\nDone! All resources removed for team '$TEAMID' and challenge '$CHALLENGE'.\n'
+printf '\nDone!\n'
+printf '\nAll resources removed for challenge "'$CHALLENGE'" by team '$TEAMID'.\n'
+```
+* Navigate into the root folder:
+```bash
+cd ~/fastapi-deployment-api
 ```
 * Create a `Dockerfile`:
 ```Dockerfile
