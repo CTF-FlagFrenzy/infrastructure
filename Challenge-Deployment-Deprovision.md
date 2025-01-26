@@ -1,4 +1,4 @@
-# How to 'infrastructure' | Deploying Challenges
+# How to 'infrastructure' | Deploying / Deprovision Challenges
 
 ---
 
@@ -21,7 +21,7 @@ kubectl describe secret teamkey-1
 
 ---
 
-### Set up API Endpoints for Challenge Deployment / Deprovision
+### Set up API Endpoints
 * On the master nodes, create a directory for the deployment service and navigate there:
 ```bash
 mkdir -p ~/fastapi-deployment-api/app
