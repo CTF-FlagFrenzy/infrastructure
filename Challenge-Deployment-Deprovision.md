@@ -347,7 +347,7 @@ docker compose up --build -d nginx
 > [!NOTE]
 > Change the values for Bearer `mySuperSecureKey`, teamid `1` as well as challenge `ceasar-cipher` to the correct ones.
 ```bash
-curl -k -X POST "https://challenge.webapp-flagfrenzy.at/deploy" \
+curl -k -X POST "https://challenge.web.ctf.htl-villach.at/deploy" \
 -H "Authorization: Bearer mySuperSecureKey" \
 -H "Content-Type: application/json" \
 -d '{"teamid":"1", "challenge":"ceasar-cipher"}'
@@ -363,7 +363,7 @@ curl -k -X POST "https://challenge.webapp-flagfrenzy.at/deploy" \
 > [!NOTE]
 > Change the values for Bearer `mySuperSecureKey`, teamid `1` as well as challenge `ceasar-cipher` to the correct ones.
 ```bash
-curl -k -X POST "https://challenge.webapp-flagfrenzy.at/deprovision" \
+curl -k -X POST "https://challenge.web.ctf.htl-villach.at/deprovision" \
 -H "Authorization: Bearer mySuperSecureKey" \
 -H "Content-Type: application/json" \
 -d '{"teamid":"1", "challenge":"ceasar-cipher"}'
