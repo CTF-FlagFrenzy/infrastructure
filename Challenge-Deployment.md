@@ -56,7 +56,7 @@ async def deploy_service(request: DeployRequest, authorization: str = Header(Non
         challenge = request.challenge
 
         # Construct and run deployment script
-        command = f"/bin/bash ./script.sh {teamid} {challenge}"
+        command = f"/bin/bash ./deploy.sh {teamid} {challenge}"
         result = subprocess.run(command, shell=True, capture_output=True, text=True)
 
         if result.returncode == 0:
@@ -64,6 +64,30 @@ async def deploy_service(request: DeployRequest, authorization: str = Header(Non
             # Extract service URL from script output
             service_url = [line for line in output.splitlines() if line.startswith("https")][0]
             return {"message": "Deployment successful", "url": service_url}
+        else:
+            raise HTTPException(status_code=500, detail=result.stderr)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/deprovision")
+async def deprovision_service(request: DeployRequest, authorization: str = Header(None)):
+    # Check authorization header
+    if authorization != f"Bearer {API_KEY}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        # Extract values from the request body
+        teamid = request.teamid
+        challenge = request.challenge
+
+        # Construct and run deprovision script
+        command = f"/bin/bash ./deprovision.sh {teamid} {challenge}"
+        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+
+        if result.returncode == 0:
+            output = result.stdout.strip()
+            return {"message": "Deprovision successful", "details": {"team": teamid, "challenge": challenge}}
         else:
             raise HTTPException(status_code=500, detail=result.stderr)
 
@@ -139,7 +163,7 @@ spec:
             port:
               number: 80
 ```
-* Create a bash script `script.sh` that automates the process:
+* Create a bash script `deploy.sh` that automates the process:
 ```bash
 #!/bin/bash
 
@@ -157,6 +181,24 @@ envsubst < ingress.yml | kubectl apply -f -
 printf '\nDone!\n'
 printf '\nExposing challenge at...\n'
 echo 'https://'$SUBDOMAIN'.web.ctf.htl-villach.at'
+```
+* Create a bash script `deprovision.sh` that deletes the challenge:
+```bash
+#!/bin/bash
+
+IN_TEAMID=$1
+IN_CHALLENGE=$2
+
+export TEAMID=$IN_TEAMID
+export CHALLENGE=$IN_CHALLENGE
+
+printf 'Deprovisioning challenge "'$CHALLENGE'" for team '$TEAMID'...\n\n'
+
+kubectl delete deployment deployment-${TEAMID}-${CHALLENGE}
+kubectl delete service service-${TEAMID}-${CHALLENGE}
+kubectl delete ingress ingress-${TEAMID}-${CHALLENGE}
+
+printf '\nDone! All resources removed for team '$TEAMID' and challenge '$CHALLENGE'.\n'
 ```
 * Create a `Dockerfile`:
 ```Dockerfile
@@ -257,6 +299,14 @@ http {
             proxy_set_header X-Forwarded-Proto $scheme;
         }
 
+        location /deprovision {
+            proxy_pass http://fastapi_nodes;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
         location / {
             proxy_pass https://traefik_nodes;
             proxy_set_header Host $host;
@@ -292,16 +342,35 @@ docker compose up --build -d nginx
 > [!NOTE]
 > Change the values for Bearer `mySuperSecureKey`, teamid `1` as well as challenge `ceasar-cipher` to the correct ones.
 ```bash
-curl -X POST "http://localhost:8080/deploy"  \
--H "Authorization: Bearer mySuperSecureKey"  \
--H "Content-Type: application/json"  \
--d '{"teamid":"1","challenge":"ceasar-cipher"}'
+curl -k -X POST "https://challenge.webapp-flagfrenzy.at/deploy" \
+-H "Authorization: Bearer mySuperSecureKey" \
+-H "Content-Type: application/json" \
+-d '{"teamid":"1", "challenge":"ceasar-cipher"}'
 ```
 * The output should look like this:
 ```bash
 {
   "message":"Deployment successful",
   "url":"https://<hash>.web.ctf.htl-villach.at"
+}
+```
+* Test the deprovisioning endpoint:
+> [!NOTE]
+> Change the values for Bearer `mySuperSecureKey`, teamid `1` as well as challenge `ceasar-cipher` to the correct ones.
+```bash
+curl -k -X POST "https://challenge.webapp-flagfrenzy.at/deprovision" \
+-H "Authorization: Bearer mySuperSecureKey" \
+-H "Content-Type: application/json" \
+-d '{"teamid":"1", "challenge":"ceasar-cipher"}'
+```
+* The output should look like this:
+```bash
+{
+  "message":"Deprovision successful",
+  "details": {
+    "team":"1",
+    "challenge":"ceasar-cipher"
+  }
 }
 ```
 
