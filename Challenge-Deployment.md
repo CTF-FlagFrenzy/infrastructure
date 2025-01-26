@@ -148,7 +148,7 @@ IN_CHALLENGE=$2
 
 export TEAMID=$IN_TEAMID
 export CHALLENGE=$IN_CHALLENGE
-export SUBDOMAIN=`echo 'Attention: Team '$TEAMID' wants to steal the recipe for '$CHALLENGE'-cookies' | sha256sum | cut -f1 -d" "`
+export SUBDOMAIN=`echo 'Attention: Team '$TEAMID' wants to steal the recipe for '$CHALLENGE'-cookies' | md5sum | cut -f1 -d" "`
 
 printf 'Deploying challenge "'$CHALLENGE'" for team '$TEAMID'...\n\n'
 envsubst < deployment.yml | kubectl apply -f -
@@ -221,29 +221,44 @@ docker compose up --build -d
 ```conf
 # Load balancer for K3s
 http {
+    # Upstreams
     upstream traefik_nodes {
-        least_conn; # Distribute traffic based on least connections
-        server 172.23.0.56:32430; # K3s master node 1
-        server 172.23.0.57:32430; # K3s master node 2
+        least_conn;
+        server 172.23.0.56:32430;
+        server 172.23.0.57:32430;
     }
 
+    upstream fastapi_nodes {
+        least_conn;
+        server 172.23.0.56:8080;
+        server 172.23.0.57:8080;
+    }
 
+    # HTTP-to-HTTPS redirect
     server {
         listen 80;
         server_name ~^(?<subdomain>.+)\.web.ctf.htl-villach.at$;
-        return 301 https://$host$request_uri; # Redirect HTTP to HTTPS
+        return 301 https://$host$request_uri;
     }
 
-
+    # HTTPS for challenge
     server {
         listen 443 ssl;
         server_name ~^(?<subdomain>.+)\.web.ctf.htl-villach.at$;
 
-        ssl_certificate /etc/nginx/certs/domain.crt;  # Path to your TLS certificate
-        ssl_certificate_key /etc/nginx/certs/domain.key; # Path to your private key
+        ssl_certificate /etc/nginx/certs/domain.crt;
+        ssl_certificate_key /etc/nginx/certs/domain.key;
+
+        location /deploy {
+            proxy_pass http://fastapi_nodes;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
 
         location / {
-            proxy_pass http://traefik_nodes; # Forward to Traefik using HTTP
+            proxy_pass https://traefik_nodes;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
