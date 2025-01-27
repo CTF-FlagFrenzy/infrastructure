@@ -7,20 +7,6 @@
 
 ---
 
-### Load / Create secrets for team-keys
-> [!TIP]
-> If the secrets are loaded when creating a team during an automated process, this step can be skipped.
-* Create a secret with the teamkey for dynamic challenge deployment:
-```bash
-kubectl create secret generic teamkey-1 --from-literal=TEAMKEY="mysupersecureTEAMKEYforteam1"
-```
-* Verify that the secret is created successfully:
-```bash
-kubectl describe secret teamkey-1
-```
-
----
-
 ### Set up API Endpoints
 * On the master nodes, create a directory for the deployment service and navigate there:
 ```bash
@@ -40,12 +26,16 @@ app = FastAPI()
 API_KEY = os.getenv("API_KEY", "default_secure_key")
 
 # Define the request body model
-class DeployRequest(BaseModel):
+class ChallengeRequest(BaseModel):
     teamid: str
     challenge: str
 
+class SecretRequest(BaseModel):
+    teamid: str
+    teamkey: str
+
 @app.post("/deploy")
-async def deploy_service(request: DeployRequest, authorization: str = Header(None)):
+async def deploy_service(request: ChallengeRequest, authorization: str = Header(None)):
     # Check authorization header
     if authorization != f"Bearer {API_KEY}":
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -70,8 +60,9 @@ async def deploy_service(request: DeployRequest, authorization: str = Header(Non
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/deprovision")
-async def deprovision_service(request: DeployRequest, authorization: str = Header(None)):
+async def deprovision_service(request: ChallengeRequest, authorization: str = Header(None)):
     # Check authorization header
     if authorization != f"Bearer {API_KEY}":
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -88,6 +79,31 @@ async def deprovision_service(request: DeployRequest, authorization: str = Heade
         if result.returncode == 0:
             output = result.stdout.strip()
             return {"message": "Deprovision successful", "details": {"team": teamid, "challenge": challenge}}
+        else:
+            raise HTTPException(status_code=500, detail=result.stderr)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/teamkey")
+async def create_teamkey_service(request: SecretRequest, authorization: str = Header(None)):
+    # Check authorization header
+    if authorization != f"Bearer {API_KEY}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        # Extract values from the request body
+        teamid = request.teamid
+        teamkey = request.teamkey
+
+        # Construct and run teamkey script
+        command = f"/bin/bash ./teamkey.sh {teamid} {teamkey}"
+        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+
+        if result.returncode == 0:
+            output = result.stdout.strip()
+            details = [line for line in output.splitlines() if line.startswith("TEAMKEY")][0]
+            return {"message": "Teamkey created successful", "details": details}
         else:
             raise HTTPException(status_code=500, detail=result.stderr)
 
@@ -201,6 +217,23 @@ kubectl delete ingress ingress-${TEAMID}-${CHALLENGE}
 printf '\nDone!\n'
 printf '\nAll resources removed for challenge "'$CHALLENGE'" by team '$TEAMID'.\n'
 ```
+* Create a bash script `teamkey.sh` that creates the scecrets:
+```bash
+#!/bin/bash
+
+IN_TEAMID=$1
+IN_TEAMKEY=$2
+
+export TEAMID=$IN_TEAMID
+export TEAMKEY=$IN_TEAMKEY
+
+printf 'Creating Kubernetes Secret for team '$TEAMID'...\n\n'
+
+kubectl create secret generic teamkey-$TEAMID --from-literal=TEAMKEY=$TEAMKEY
+kubectl describe secret teamkey-$TEAMID
+
+printf '\nDone!\n'
+```
 * Navigate into the root folder:
 ```bash
 cd ~/fastapi-deployment-api
@@ -296,7 +329,19 @@ http {
         ssl_certificate /etc/nginx/certs/domain.crt;
         ssl_certificate_key /etc/nginx/certs/domain.key;
 
+        location /teamkey {
+            allow 172.23.0.55; # Webapp IP
+            deny all;
+            proxy_pass http://fastapi_nodes;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
         location /deploy {
+            allow 172.23.0.55; # Webapp IP
+            deny all;
             proxy_pass http://fastapi_nodes;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -305,6 +350,8 @@ http {
         }
 
         location /deprovision {
+            allow 172.23.0.55; # Webapp IP
+            deny all;
             proxy_pass http://fastapi_nodes;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -340,7 +387,24 @@ http {
 > --- other configurations ---
 > ```
 ```bash
+docker compose down -v nginx && \
 docker compose up --build -d nginx
+```
+* Test the teamkey creation endpoint:
+> [!NOTE]
+> Change the values for Bearer `mySuperSecureKey`, teamid `1` as well as teamkey `mySuperSecureTeamkeyForTeam1` to the correct ones.
+```bash
+curl -k -X POST "https://challenge.web.ctf.htl-villach.at/teamkey" \
+-H "Authorization: Bearer mySuperSecureKey" \
+-H "Content-Type: application/json" \
+-d '{"teamid":"1", "teamkey":"mySuperSecureTeamkeyForTeam1"}'
+```
+* The output should look like this:
+```bash
+{
+  "message": "Deprovision successful", 
+  "team": teamid
+}
 ```
 * Make sure the needed image is on the registry by accessing the web registry's interface `https://registry:8443`.
 * Test the deployment endpoint:
@@ -381,7 +445,12 @@ curl -k -X POST "https://challenge.web.ctf.htl-villach.at/deprovision" \
 
 ---
 
-### Secure the endpoints
+### Implement the Endpoints onto the Webapp
+* tbd.
+
+---
+
+### Secure the Endpoints
 > [!CAUTION]
 > It does not have to be done - already secure
 * Create a service account:
@@ -447,7 +516,7 @@ kubectl get nodes
 
 ---
 
-### Set up a DNS-Server for forwarding subdomains (only locally)
+### Set up a DNS-Server for forwarding Subdomains (only locally)
 * Install dnsmasq:
 ```bash
 sudo apt-get install dnsmasq
