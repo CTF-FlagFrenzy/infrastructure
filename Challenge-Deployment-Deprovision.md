@@ -1,4 +1,4 @@
-# How to 'infrastructure' | Deploying / Deprovision Challenges
+# How to 'infrastructure' | Deploying / Deprovisioning Challenges
 
 ---
 
@@ -103,7 +103,7 @@ async def create_teamkey_service(request: SecretRequest, authorization: str = He
         if result.returncode == 0:
             output = result.stdout.strip()
             details = [line for line in output.splitlines() if line.startswith("TEAMKEY")][0]
-            return {"message": "Teamkey created successful", "details": details}
+            return {"message": "Secret Creation successful", "details": details}
         else:
             raise HTTPException(status_code=500, detail=result.stderr)
 
@@ -402,8 +402,8 @@ curl -k -X POST "https://challenge.web.ctf.htl-villach.at/teamkey" \
 * The output should look like this:
 ```bash
 {
-  "message": "Deprovision successful", 
-  "team": teamid
+  "message": "Secret created successful", 
+  "details": TEAMKEY: 28 byte
 }
 ```
 * Make sure the needed image is on the registry by accessing the web registry's interface `https://registry:8443`.

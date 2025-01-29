@@ -312,6 +312,10 @@ k3s kubectl -n kubernetes-dashboard create token admin-user
 ```ps
 kubectl proxy
 ```
+* On the host create a ssh tunnel to access the manager:
+```bash
+ssh -i .\.ssh\id_rsa_FlagFrenzy -N -L localhost:8001:localhost:8001 manager@172.23.0.56
+```
 * On the dashboard (`http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/`) log in using the token gathered earlier.
 * Verify the functionality by viewing the nodes.
 
