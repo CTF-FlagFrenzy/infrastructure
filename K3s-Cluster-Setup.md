@@ -205,7 +205,16 @@ sudo chmod 644 /etc/rancher/k3s/k3s.yaml
 ```
 * If it does not work permanently consider changing the ownership:
 ```bash
-sudo chmod plonerf: /etc/rancher/k3s/k3s.yaml
+sudo chown manager: /etc/rancher/k3s/k3s.yaml
+```
+* Further, consider changing the server attribute in the `/etc/rancher/k3s/k3s.yaml` from localhost to the server ip:
+> [!NOTE]
+> Change the ip address to the k3s master's. Do this on both masters. This is for the fastapi service in order for it to communicate with the cluster out of the container.
+```yaml
+- cluster:
+    certificate-authority-data: 
+    server: https://172.23.0.57:6443
+  name: default
 ```
 
 ---
