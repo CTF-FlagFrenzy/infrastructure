@@ -28,7 +28,7 @@ htpasswd -Bc auth/registry.password username
 > [!NOTE]
 > Replace `hostname` with the hostname of the machine the container stack is running on
 ```bash
-openssl req -x509 -nodes -newkey rsa:2048 -keyout certs/domain.key -out certs/domain.crt -days 365 -addext "subjectAltName = DNS.1:hostname,DNS.2:registry"
+openssl req -x509 -nodes -newkey rsa:2048 -keyout certs/domain.key -out certs/domain.crt -days 365 -addext "subjectAltName = DNS.1:hostname,DNS.2:registry,DNS.3:web.ctf.htl-villach.at"
 ```
 * Create and open the `docker-compose.yaml` file and define the registry as well as the ui with its proxy:
 ```yaml
