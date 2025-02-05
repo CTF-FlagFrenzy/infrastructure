@@ -371,7 +371,7 @@ cp /var/lib/rancher/k3s/agent/etc/containerd/certs.d/web.ctf.htl-villach.at:5000
 ```
 * Change some permissions:
 ```bash
-chmod 644 /etc/rancher/k3s/certs/ca.crt
+chmod 644 /etc/rancher/k3s/certs/ca.crt && \
 chown root:root /etc/rancher/k3s/certs/ca.crt
 ```
 * Edit the `/etc/rancher/k3s/registries.yaml`:
