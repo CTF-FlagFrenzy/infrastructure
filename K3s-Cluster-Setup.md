@@ -330,7 +330,7 @@ ssh -i .\.ssh\id_rsa_FlagFrenzy -N -L localhost:8001:localhost:8001 manager@172.
 
 ---
 
-### Implement private registry v1 (recommended)
+### Implement private registry on the masters
 * Add the registry's dns name to the server:
 > [!NOTE]
 > Change `ip` to the registry's ip address.
@@ -353,51 +353,51 @@ kubectl describe secret registry-credentials
 
 ---
 
-### Implement private registry v2 (not recommended)
-> [!WARNING]
-> This might cause some errors.
-* Add the registry's dns name to the server:
+### Implement private registry on the agents
 > [!NOTE]
-> Change `ip` to the registry's ip address.
+> All commands have been executed as root.
+* Create needed folders:
 ```bash
-sudo -- sh -c "echo 'ip registry' >> /etc/hosts"
+mkdir -p /etc/rancher/k3s/certs/ && \
+mkdir -p /var/lib/rancher/k3s/agent/etc/containerd/certs.d/web.ctf.htl-villach.at:5000/
 ```
-* Copy the needed files from the registry to the server:
-> [!NOTE]
-> Change `myuser` to the right user on the registry server.
+* Get the certificate:
 ```bash
-sudo scp plonerf@registry:~/docker-registry/certs/domain* /etc/rancher/k3s/
+scp manager@172.23.0.55:~/docker-registry/certs/domain.crt /var/lib/rancher/k3s/agent/etc/containerd/certs.d/web.ctf.htl-villach.at:5000/
 ```
-* Create `/etc/rancher/k3s/.env` for the registry's login credentials:
-> [!NOTE]
-> Change the values if needed.
-```sh
-REGISTRY_USER=RegistryUser
-REGISRTY_PASSWORD=MySuperSecurePassw0rd
+* Copy the certificate the persist it:
+```bash
+cp /var/lib/rancher/k3s/agent/etc/containerd/certs.d/web.ctf.htl-villach.at:5000/domain.crt /etc/rancher/k3s/certs/ca.crt
 ```
-* Update K3s configuration in `/etc/rancher/k3s/registries.yaml` to integrate the private registry:
+* Change some permissions:
+```bash
+chmod 644 /etc/rancher/k3s/certs/ca.crt
+chown root:root /etc/rancher/k3s/certs/ca.crt
+```
+* Edit the `/etc/rancher/k3s/registries.yaml`:
 ```yml
 mirrors:
-  "registry:5000":
+  "web.htl-villach.at:5000":
 
     endpoint:
-      - "https://registry:5000"
+      - "https://web.htl-villach.at:5000"
 
 
 configs:
-  "registry:5000":
-
-    env_file: .env
-    environment:
-      REGISTRY_USER: ${REGISTRY_USER}
-      REGISRTY_PASSWORD: ${REGISRTY_PASSWORD}
+  "web.ctf.htl-villach.at:5000":
 
     auth:
-      username: ${REGISTRY_USER}
-      password: ${REGISRTY_PASSWORD}
+      username: "cookie_pusher"
+      password: "MyR€gistryUser123!"
 
     tls:
-      cert_file: "domain.crt"
-      key_file: "domain.key"
+      ca_file: "/etc/rancher/k3s/certs/ca.crt"
 ```
-* Repeat the process on all servers.
+* Restart the k3s-agent service:
+```bash
+systemctl restart k3s-agent
+```
+* Try to pull an image:
+```bash
+crictl pull web.ctf.htl-villach.at:5000/solana-assets
+```
