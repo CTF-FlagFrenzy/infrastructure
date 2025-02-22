@@ -230,22 +230,16 @@ docker compose up --build
 ---
 
 ### Use Private Local Docker Registry
-* Add registry host dns name to your client:
-> [!NOTE]
-> Change `ip` to the machine's ip address and `my_registry_host` with the hostname where the registry is running.
-```bash
-sudo -- sh -c "echo 'ip my_registry_host' >> /etc/hosts"
-```
 * Copy the container-host's certificate to the client:
 > [!NOTE]
 > Change `user` with the host's username where the regisrty is running on
 ```bash
-sudo scp user@my_registry_host:~/docker-registry/certs/domain.crt /usr/share/ca-certificates
+sudo scp user@web.ctf.htl-villach.at:~/docker-registry/certs/domain.crt /usr/share/ca-certificates
 ```
 * Create a folder for the registry certificate authority and copy the certificate:
 ```bash
-sudo mkdir -p /etc/docker/certs.d/my_registry_host\:5000 && \
-sudo cp /usr/share/ca-certificates/domain.crt /etc/docker/certs.d/my_registry_host\:5000/ca.crt
+sudo mkdir -p /etc/docker/certs.d/web.ctf.htl-villach.at\:5000 && \
+sudo cp /usr/share/ca-certificates/domain.crt /etc/docker/certs.d/web.ctf.htl-villach.at\:5000/ca.crt
 ```
 * Restart the certificate service to apply the changes for the certificate trust:
 > [!NOTE]
@@ -253,25 +247,25 @@ sudo cp /usr/share/ca-certificates/domain.crt /etc/docker/certs.d/my_registry_ho
 ```bash
 sudo dpkg-reconfigure ca-certificates
 ```
-* Create a new image from a container:
+* Build the image:
 ```bash
-docker commit container_name image_name
+docker compose build
 ```
 * Login to the registry:
 ```bash
-docker login https://my_registry_host:5000
+docker login https://web.ctf.htl-villach.at:5000
 ```
 > [!IMPORTANT]
 > If the certificate is not trusted due to an unknown certificate-authority (ca), consider restarting the client. The configuration might not have been applied.
 * Tag an image to prepare it for pushing:
 ```bash
-docker tag base_image my_registry_host:5000/image[:tag]
+docker tag base_image web.ctf.htl-villach.at:5000/image[:tag]
 ```
 * Push the image onto the registry:
 ```bash
-docker push my_registry_host:5000/image[:tag]
+docker push web.ctf.htl-villach.at:5000/image[:tag]
 ```
 * Pull an image from registry:
 ```bash
-docker pull my_registry_host:5000/image[:tag]
+docker pull web.ctf.htl-villach.at:5000/image[:tag]
 ```
