@@ -116,6 +116,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: deployment-${TEAMID}-${CHALLENGE}
+  namespace: namespace-team-${TEAMID}
   labels:
     app: ${CHALLENGE}
     team: '${TEAMID}'
@@ -142,6 +143,13 @@ spec:
             secretKeyRef:
               name: teamkey-${TEAMID}
               key: TEAMKEY
+        resources:
+          requests:
+            memory: "256Mi" # sample value
+            cpu: "250m" # sample value
+          limits:
+            memory: "512Mi" # sample value
+            cpu: "500m" # sample value
       imagePullSecrets:
       - name: registry-credentials
 ---
@@ -227,10 +235,10 @@ IN_TEAMKEY=$2
 export TEAMID=$IN_TEAMID
 export TEAMKEY=$IN_TEAMKEY
 
-printf 'Creating Kubernetes Secret for team '$TEAMID'...\n\n'
+printf 'Setting up environment for team '$TEAMID'...\n\n'
 
+kubectl create namespace namespace-team-$TEAMID
 kubectl create secret generic teamkey-$TEAMID --from-literal=TEAMKEY=$TEAMKEY
-kubectl describe secret teamkey-$TEAMID
 
 printf '\nDone!\n'
 ```
