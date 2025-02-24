@@ -157,6 +157,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: service-${TEAMID}-${CHALLENGE}
+  namespace: namespace-team-${TEAMID}
 spec:
   selector:
     app: ${CHALLENGE}
@@ -171,7 +172,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ingress-${TEAMID}-${CHALLENGE}
-  namespace: default
+  namespace: namespace-team-${TEAMID}
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
