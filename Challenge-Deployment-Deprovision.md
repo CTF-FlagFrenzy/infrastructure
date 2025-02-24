@@ -276,6 +276,8 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
 API_KEY=mySuperSecureKey
 ```
 * Create a `docker-compose.yml` file:
+> [!IMPORTANT]
+> Consider copying the `/etc/rancher/k3s/k3s.yaml` file to `~/k3s` in order to prevent the file from being overwritten.
 ```yml
 version: '3.8'
 
@@ -293,7 +295,7 @@ services:
     volumes:
       - ./app:/app
       - /usr/local/bin/kubectl:/usr/local/bin/kubectl # Bind kubectl binary
-      - /etc/rancher/k3s/k3s.yaml:/root/.kube/config:ro # Bind kube config for kubectl
+      - ./k3s.yaml:/root/.kube/config:ro # Bind kube config for kubectl
 
     restart: always
 ```
