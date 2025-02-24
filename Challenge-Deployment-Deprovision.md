@@ -455,11 +455,6 @@ curl -k -X POST "https://challenge.web.ctf.htl-villach.at/deprovision" \
 
 ---
 
-### Implement the Endpoints onto the Webapp
-* tbd.
-
----
-
 ### Secure the Endpoints
 > [!CAUTION]
 > It does not have to be done - already secure
