@@ -239,7 +239,8 @@ export TEAMKEY=$IN_TEAMKEY
 printf 'Setting up environment for team '$TEAMID'...\n\n'
 
 kubectl create namespace namespace-team-$TEAMID
-kubectl create secret generic teamkey-$TEAMID --from-literal=TEAMKEY=$TEAMKEY
+kubectl create secret generic teamkey-$TEAMID --from-literal=TEAMKEY=$TEAMKEY -n namespace-team-$TEAMID
+kubectl describe secret teamkey-$TEAMID -n namespace-team-$TEAMID
 
 printf '\nDone!\n'
 ```
