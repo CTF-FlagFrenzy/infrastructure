@@ -219,9 +219,9 @@ export CHALLENGE=$IN_CHALLENGE
 
 printf 'Deprovisioning challenge "'$CHALLENGE'" for team '$TEAMID'...\n\n'
 
-kubectl delete deployment deployment-${TEAMID}-${CHALLENGE}
-kubectl delete service service-${TEAMID}-${CHALLENGE}
-kubectl delete ingress ingress-${TEAMID}-${CHALLENGE}
+kubectl delete deployment deployment-${TEAMID}-${CHALLENGE} -n namespace-team-$TEAMID
+kubectl delete service service-${TEAMID}-${CHALLENGE} -n namespace-team-$TEAMID
+kubectl delete ingress ingress-${TEAMID}-${CHALLENGE} -n namespace-team-$TEAMID
 
 printf '\nDone!\n'
 printf '\nAll resources removed for challenge "'$CHALLENGE'" by team '$TEAMID'.\n'
