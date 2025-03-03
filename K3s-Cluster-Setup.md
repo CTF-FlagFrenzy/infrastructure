@@ -307,6 +307,18 @@ kubectl create secret tls grafana-tls \
 --cert=domain.crt \
 --key=domain.key
 ```
+* Install and apply the Flannel CNI:
+```bash
+kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+```
+* Restart k3s:
+```bash
+sudo systemctl restart k3s
+```
+* Verify that flannel is running:
+```bash
+kubectl get pods -n kube-flannel
+```
 * Create a ConfigMap `prometheus-config.yaml` for Prometheus Configuration:
 ```yaml
 apiVersion: v1
@@ -499,6 +511,10 @@ spec:
 * Deploy the Alert Manager:
 ```bash
 kubectl apply -f alertmanager-config.yaml -f alertmanager-deployment.yaml
+```
+* Verify that the pods are active and running:
+```bash
+kubectl get pods -n monitoring
 ```
 
 ---
