@@ -279,7 +279,231 @@ kubectl get nodes
 
 ---
 
-### Implement a dashboard
+### Implement Grafana | Prometheus
+* Create a new directory to store all files and navigate there:
+```bash
+mkdir -p ~/k3s/grafana-prometheus && \
+cd ~/k3s/grafana-prometheus
+```
+* Create a new namespace:
+```bash
+kubectl create namespace monitoring
+```
+* Create a secret for the login credentials:
+```bash
+kubectl create secret generic grafana-secret \
+--namespace=monitoring \
+--from-literal=admin-user=dontUseAdmin \
+--from-literal=admin-password='SuperSecurePassword123!'
+```
+* Create a self-signed certificate if needed:
+```bash
+openssl req -x509 -nodes -newkey rsa:4096 -keyout domain.key -out domain.crt -days 365
+```
+* Create a TLS secret for HTTPS:
+```bash
+kubectl create secret tls grafana-tls \
+--namespace monitoring \
+--cert=domain.crt \
+--key=domain.key
+```
+* Create a ConfigMap `prometheus-config.yaml` for Prometheus Configuration:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 10s  
+
+    scrape_configs:
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace]
+            regex: ".*"  
+            action: keep
+```
+* Create `prometheus-deployment.yaml` for Secure Prometheus Deployment:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 3000
+        fsGroup: 2000
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.37.0
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus/"
+            - "--web.enable-lifecycle"
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/prometheus
+            - name: storage-volume
+              mountPath: /prometheus
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+      volumes:
+        - name: config-volume
+          configMap:
+            name: prometheus-config
+        - name: storage-volume
+          emptyDir: {}
+```
+* Deploy Prometheus:
+```bash
+kubectl apply -f prometheus-config.yaml -f prometheus-deployment.yaml
+```
+* Create `grafana-deployment.yaml` for Secure Grafana Deployment:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:latest
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-secret
+                  key: admin-user
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-secret
+                  key: admin-password
+          ports:
+            - containerPort: 3000
+```
+* Deploy Grafana:
+```bash
+kubectl apply -f grafana-deployment.yaml
+```
+* Create an Ingress `grafana-ingress.yaml` to forward Grafana with HTTPS:
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  tls:
+    - hosts:
+        - grafana.web.ctf.htl-villach.at
+      secretName: grafana-tls
+  rules:
+    - host: grafana.web.ctf.htl-villach.at
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 80
+```
+* Deploy the ingress:
+```bash
+kubectl apply -f grafana-ingress.yaml
+```
+* Create a ConfigMap `alertmanager-config.yaml` for the Alert Manager:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+data:
+  alertmanager.yml: |
+    route:
+      group_by: ['alertname']
+      receiver: 'slack-notifications'
+    receivers:
+      - name: 'slack-notifications'
+        slack_configs:
+          - channel: '#alerts'
+            send_resolved: true
+            api_url: 'https://hooks.slack.com/services/XXXXX/XXXXX/XXXXX'
+```
+* Create `alertmanager-deployment.yaml` to deploy the Alert Manager:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+    spec:
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager:v0.24.0
+          args:
+            - "--config.file=/etc/alertmanager/alertmanager.yml"
+          ports:
+            - containerPort: 9093
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/alertmanager
+      volumes:
+        - name: config-volume
+          configMap:
+            name: alertmanager-config
+```
+* Deploy the Alert Manager:
+```bash
+kubectl apply -f alertmanager-config.yaml -f alertmanager-deployment.yaml
+```
+
+---
+
+### Implement K3s Dashboard
 * Pull the latest dashboard release:
 ```bash
 k3s kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.4/aio/deploy/recommended.yaml
