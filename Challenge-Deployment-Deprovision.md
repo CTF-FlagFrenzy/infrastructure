@@ -2,6 +2,13 @@
 
 ---
 
+### Table of Contents
+- [Set up API Endpoints](#set-up-api-endpoints)
+- [Reconfigure the load balancer](#reconfigure-the-load-balancer)
+- [Secure the Endpoints](#secure-the-endpoints)
+- [Set up a DNS-Server for forwarding Subdomains (only locally)](#set-up-a-dns-server-for-forwarding-subdomains-only-locally)
+- [Troubleshooting](#troubleshooting)
+
 > [!IMPORTANT]
 > Before getting started, consider working through the guides `README.md`, `Docker-Registry-Setup.md` and `K3s-Cluster-Setup.md` in order to set up everything needed in advance.
 

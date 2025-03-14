@@ -2,6 +2,10 @@
 
 ---
 
+### Table of Contents
+- [Deploy Registry](#deploy-registry)
+- [Use Private Local Docker Registry](#use-private-local-docker-registry)
+
 > [!IMPORTANT]
 > Before getting started, consider working through the guide `README.md` in order to set up everything needed in advance.
 

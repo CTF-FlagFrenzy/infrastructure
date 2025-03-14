@@ -2,12 +2,18 @@
 
 ---
 
+### Table of Contents
+- [Install Docker](#install-docker)
+- [Set up rootless Docker](#set-up-rootless-docker)
+- [Set up a portainer for easier management](#set-up-a-portainer-for-easier-management)
+- [Set up podman-compose (when rootless docker does not work)](#set-up-podman-compose-when-rootless-docker-does-not-work)
+
 > [!IMPORTANT]
 > Before getting started, consider setting up blank ubuntu servers (1 Load Balancer / 2 Matser Nodes / 4 Agent Nodes) in advance. In this use case, everything is testet and working using ubuntu 22.04 as well as 24.x.
 
 ---
 
-### Installing Docker
+### Install Docker
 * Uninstall all conflicting packages:
 ```bash
 for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done

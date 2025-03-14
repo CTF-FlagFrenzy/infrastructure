@@ -2,6 +2,16 @@
 
 ---
 
+### Table of Contents
+- [Set up the load balancer](#set-up-the-load-balancer)
+- [Set up the K3s servers](#set-up-the-k3s-servers)
+- [Set up the K3s agents](#set-up-the-k3s-agents)
+- [Install kubectl on Windows for testing](#install-kubectl-on-windows-for-testing)
+- [Implement K3s Dashboard](#implement-k3s-dashboard)
+- [Implement private registry on the masters](#implement-private-registry-on-the-masters)
+- [Implement private registry on the agents](#implement-private-registry-on-the-agents)
+- [Implement Grafana | Prometheus (wip.)](#implement-grafana-prometheus-wip)
+
 > [!IMPORTANT]
 > Before getting started, consider working through the guides `README.md` and `Docker-Registry-Setup.md` in order to set up everything needed in advance.
 
@@ -387,8 +397,8 @@ configs:
   "web.ctf.htl-villach.at:5000":
 
     auth:
-      username: "cookie_pusher"
-      password: "MyR€gistryUser123!"
+      username: "myuser"
+      password: "mypassword"
 
     tls:
       ca_file: "/etc/rancher/k3s/certs/ca.crt"
