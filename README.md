@@ -1,4 +1,4 @@
-# How to 'infrastructure' | From zero to hero (Docker)
+# How to 'infrastructure' | From zero to hero (Docker / Podman)
 
 ---
 
