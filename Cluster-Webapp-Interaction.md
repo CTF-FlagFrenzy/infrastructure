@@ -284,7 +284,7 @@ API_KEY=mySuperSecureKey
 ```
 * Create a `docker-compose.yml` file:
 > [!IMPORTANT]
-> Consider copying the `/etc/rancher/k3s/k3s.yaml` file to `~/k3s` in order to prevent the file from being overwritten.
+> Consider copying the `/etc/rancher/k3s/k3s.yaml` file to `~/fastapi-deployment-api/` in order to prevent the file from being overwritten.
 ```yml
 version: '3.8'
 
@@ -305,6 +305,20 @@ services:
       - ./k3s.yaml:/root/.kube/config:ro # Bind kube config for kubectl
 
     restart: always
+```
+* The final structure should look like this:
+```bash
+~/fastapi-deployment-api/
+├── app
+│   ├── deployment.yml
+│   ├── deploy.sh
+│   ├── deprovision.sh
+│   ├── ingress.yml
+│   ├── main.py
+│   └── teamkey.sh
+├── docker-compose.yml
+├── Dockerfile
+└── k3s.yaml
 ```
 * Deploy the service:
 ```bash
