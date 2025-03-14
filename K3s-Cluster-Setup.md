@@ -279,7 +279,7 @@ kubectl get nodes
 
 ---
 
-### Implement Grafana | Prometheus
+### Implement Grafana | Prometheus (wip.)
 * Create a new directory to store all files and navigate there:
 ```bash
 mkdir -p ~/k3s/grafana-prometheus && \
@@ -348,6 +348,7 @@ metadata:
   name: prometheus
   namespace: monitoring
 spec:
+  serviceAccountName: prometheus
   replicas: 1
   selector:
     matchLabels:
@@ -384,6 +385,20 @@ spec:
             name: prometheus-config
         - name: storage-volume
           emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  selector:
+    app: grafana
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
 ```
 * Deploy Prometheus:
 ```bash
@@ -422,6 +437,19 @@ spec:
                   key: admin-password
           ports:
             - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  selector:
+    app: grafana
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
 ```
 * Deploy Grafana:
 ```bash
