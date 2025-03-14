@@ -279,6 +279,131 @@ kubectl get nodes
 
 ---
 
+### Implement K3s Dashboard
+* Pull the latest dashboard release:
+```bash
+k3s kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.4/aio/deploy/recommended.yaml
+```
+* Add an admin user for the dashboard (`dashboard.admin-user.yml`):
+```yml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-user
+  namespace: kubernetes-dashboard
+```
+* Assign the admin role (`dashboard.admin-user-role.yml`):
+```yml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: admin-user
+  namespace: kubernetes-dashboard
+```
+* Deploy the admin-user configuration:
+> [!NOTE]
+> If you are doing this from your dev machine (windows set up earlier), remove k3s and just use kubectl.
+```bash
+k3s kubectl create -f dashboard.admin-user.yml -f dashboard.admin-user-role.yml
+```
+* Get the bear token for the login:
+```bash
+k3s kubectl -n kubernetes-dashboard create token admin-user
+```
+* On the dev machine, enable the proxy:
+```ps
+kubectl proxy
+```
+* On the host create a ssh tunnel to access the manager:
+```bash
+ssh -i .\.ssh\id_rsa_FlagFrenzy -N -L localhost:8001:localhost:8001 manager@172.23.0.56
+```
+* On the dashboard (`http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/`) log in using the token gathered earlier.
+* Verify the functionality by viewing the nodes.
+
+---
+
+### Implement private registry on the masters
+* Add the registry's dns name to the server:
+> [!NOTE]
+> Change `ip` to the registry's ip address.
+```bash
+sudo -- sh -c "echo 'ip registry' >> /etc/hosts"
+```
+* Create a secret for the registry's credentials and general information:
+> [!NOTE]
+> Change `myuser` and `mypassword` to the correct values.
+```bash
+kubectl create secret docker-registry registry-credentials \
+  --docker-server=https://registry:5000 \
+  --docker-username=myuser \
+  --docker-password=mypassword \
+```
+* Verify the secrets:
+```bash
+kubectl describe secret registry-credentials
+```
+
+---
+
+### Implement private registry on the agents
+> [!NOTE]
+> All commands have been executed as root.
+* Create needed folders:
+```bash
+mkdir -p /etc/rancher/k3s/certs/ && \
+mkdir -p /var/lib/rancher/k3s/agent/etc/containerd/certs.d/web.ctf.htl-villach.at:5000/
+```
+* Get the certificate:
+```bash
+scp manager@172.23.0.55:~/docker-registry/certs/domain.crt /var/lib/rancher/k3s/agent/etc/containerd/certs.d/web.ctf.htl-villach.at:5000/
+```
+* Copy the certificate the persist it:
+```bash
+cp /var/lib/rancher/k3s/agent/etc/containerd/certs.d/web.ctf.htl-villach.at:5000/domain.crt /etc/rancher/k3s/certs/ca.crt
+```
+* Change some permissions:
+```bash
+chmod 644 /etc/rancher/k3s/certs/ca.crt && \
+chown root:root /etc/rancher/k3s/certs/ca.crt
+```
+* Edit the `/etc/rancher/k3s/registries.yaml`:
+```yml
+mirrors:
+  "web.htl-villach.at:5000":
+
+    endpoint:
+      - "https://web.htl-villach.at:5000"
+
+
+configs:
+  "web.ctf.htl-villach.at:5000":
+
+    auth:
+      username: "cookie_pusher"
+      password: "MyR€gistryUser123!"
+
+    tls:
+      ca_file: "/etc/rancher/k3s/certs/ca.crt"
+```
+* Restart the k3s-agent service:
+```bash
+systemctl restart k3s-agent
+```
+* Try to pull an image:
+```bash
+crictl pull web.ctf.htl-villach.at:5000/solana-assets
+```
+
+---
+
 ### Implement Grafana | Prometheus (wip.)
 * Create a new directory to store all files and navigate there:
 ```bash
@@ -543,129 +668,4 @@ kubectl apply -f alertmanager-config.yaml -f alertmanager-deployment.yaml
 * Verify that the pods are active and running:
 ```bash
 kubectl get pods -n monitoring
-```
-
----
-
-### Implement K3s Dashboard
-* Pull the latest dashboard release:
-```bash
-k3s kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.4/aio/deploy/recommended.yaml
-```
-* Add an admin user for the dashboard (`dashboard.admin-user.yml`):
-```yml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: admin-user
-  namespace: kubernetes-dashboard
-```
-* Assign the admin role (`dashboard.admin-user-role.yml`):
-```yml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: admin-user
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-admin
-subjects:
-- kind: ServiceAccount
-  name: admin-user
-  namespace: kubernetes-dashboard
-```
-* Deploy the admin-user configuration:
-> [!NOTE]
-> If you are doing this from your dev machine (windows set up earlier), remove k3s and just use kubectl.
-```bash
-k3s kubectl create -f dashboard.admin-user.yml -f dashboard.admin-user-role.yml
-```
-* Get the bear token for the login:
-```bash
-k3s kubectl -n kubernetes-dashboard create token admin-user
-```
-* On the dev machine, enable the proxy:
-```ps
-kubectl proxy
-```
-* On the host create a ssh tunnel to access the manager:
-```bash
-ssh -i .\.ssh\id_rsa_FlagFrenzy -N -L localhost:8001:localhost:8001 manager@172.23.0.56
-```
-* On the dashboard (`http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/`) log in using the token gathered earlier.
-* Verify the functionality by viewing the nodes.
-
----
-
-### Implement private registry on the masters
-* Add the registry's dns name to the server:
-> [!NOTE]
-> Change `ip` to the registry's ip address.
-```bash
-sudo -- sh -c "echo 'ip registry' >> /etc/hosts"
-```
-* Create a secret for the registry's credentials and general information:
-> [!NOTE]
-> Change `myuser` and `mypassword` to the correct values.
-```bash
-kubectl create secret docker-registry registry-credentials \
-  --docker-server=https://registry:5000 \
-  --docker-username=myuser \
-  --docker-password=mypassword \
-```
-* Verify the secrets:
-```bash
-kubectl describe secret registry-credentials
-```
-
----
-
-### Implement private registry on the agents
-> [!NOTE]
-> All commands have been executed as root.
-* Create needed folders:
-```bash
-mkdir -p /etc/rancher/k3s/certs/ && \
-mkdir -p /var/lib/rancher/k3s/agent/etc/containerd/certs.d/web.ctf.htl-villach.at:5000/
-```
-* Get the certificate:
-```bash
-scp manager@172.23.0.55:~/docker-registry/certs/domain.crt /var/lib/rancher/k3s/agent/etc/containerd/certs.d/web.ctf.htl-villach.at:5000/
-```
-* Copy the certificate the persist it:
-```bash
-cp /var/lib/rancher/k3s/agent/etc/containerd/certs.d/web.ctf.htl-villach.at:5000/domain.crt /etc/rancher/k3s/certs/ca.crt
-```
-* Change some permissions:
-```bash
-chmod 644 /etc/rancher/k3s/certs/ca.crt && \
-chown root:root /etc/rancher/k3s/certs/ca.crt
-```
-* Edit the `/etc/rancher/k3s/registries.yaml`:
-```yml
-mirrors:
-  "web.htl-villach.at:5000":
-
-    endpoint:
-      - "https://web.htl-villach.at:5000"
-
-
-configs:
-  "web.ctf.htl-villach.at:5000":
-
-    auth:
-      username: "cookie_pusher"
-      password: "MyR€gistryUser123!"
-
-    tls:
-      ca_file: "/etc/rancher/k3s/certs/ca.crt"
-```
-* Restart the k3s-agent service:
-```bash
-systemctl restart k3s-agent
-```
-* Try to pull an image:
-```bash
-crictl pull web.ctf.htl-villach.at:5000/solana-assets
 ```
