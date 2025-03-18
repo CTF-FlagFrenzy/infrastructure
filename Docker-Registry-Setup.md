@@ -273,3 +273,5 @@ docker push web.ctf.htl-villach.at:5000/image[:tag]
 ```bash
 docker pull web.ctf.htl-villach.at:5000/image[:tag]
 ```
+> [!NOTE]
+> Note that the last step is not needed - K3s uses containerd to pull images and deploy pods on the worker nodes.
